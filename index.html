@@ -2,14 +2,14 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <title>Project UX - Expand + Placeholder Sumir</title>
+  <title>Project UX - Conversas Separadas</title>
   <style>
     /* =====================================================
        ENCÁPSULADO EM #assistant-container: Não afeta o site
        ===================================================== */
     #assistant-container {
       position: relative;
-      z-index: 9999; /* Fica acima do seu layout */
+      z-index: 9999; /* Fica acima do layout */
     }
 
     /* Botão flutuante (abre/fecha) */
@@ -36,7 +36,7 @@
       transform: rotate(-15deg);
     }
 
-    /* Janela do chat */
+    /* Janela principal que envolve lista e chat */
     #assistant-container #serviceassistant-window {
       position: fixed;
       bottom: 100px; right: 30px;
@@ -70,18 +70,61 @@
       animation: assistantCloseWindow 0.4s forwards cubic-bezier(0.19,1,0.22,1);
     }
 
-    /* Cabeçalho */
-    #assistant-container #serviceassistant-header {
+    /* LISTA DE CONVERSAS */
+    #assistant-container #conversation-list {
+      flex: 1;
+      display: none; /* Começa escondida, mas mostraremos no onLoad ou ao voltar */
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      position: relative;
+    }
+    #assistant-container #conversation-list h2 {
+      margin-top: 0;
+    }
+
+    /* Itens da lista */
+    .chat-item {
+      background: rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 10px;
+      padding: 10px 15px;
+      margin-bottom: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex; align-items: center;
+      font-weight: 500; color: #333;
+    }
+    .chat-item:hover {
+      background: rgba(255,255,255,0.9);
+    }
+
+    /* TELA DE CHAT */
+    #assistant-container #chat-screen {
+      flex: 1;
+      display: none; /* A princípio, escondido até escolher uma conversa */
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Cabeçalho do chat */
+    #assistant-container #chat-screen-header {
       background: rgba(255,255,255,0.1);
       backdrop-filter: blur(15px);
       color: #333;
       height: 60px; padding: 0 20px;
       display: flex; align-items: center;
       justify-content: flex-start; gap: 10px;
-      border-top-left-radius: 20px; border-top-right-radius: 20px;
       border-bottom: 1px solid rgba(255,255,255,0.3);
       position: relative;
     }
+    /* Botão de voltar no cabeçalho */
+    .back-button {
+      background: transparent; border: none; cursor: pointer;
+      font-size: 14px; color: #007aff; margin-right: 10px;
+    }
+
     #assistant-container #avatar {
       width: 42px; height: 42px;
       border-radius: 50%; object-fit: cover;
@@ -220,12 +263,11 @@
       background-color: rgba(69,160,73,0.9);
     }
 
-    /* Área de entrada */
+    /* Área de entrada (rodapé do chat) */
     #assistant-container #serviceassistant-input-area {
       padding: 12px; display: flex; align-items: center;
       background: rgba(255,255,255,0.15);
       backdrop-filter: blur(20px) saturate(1.5);
-      border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
       position: relative; justify-content: flex-start; gap: 8px;
     }
     #assistant-container #close-assistance-button {
@@ -246,7 +288,7 @@
       width: 18px; height: 18px; fill: #ff3b30;
     }
 
-    /* ARCO-ÍRIS SUAVE */
+    /* Efeito arco-íris suave no input */
     @keyframes rainbow {
       0%   { background-position: 0% 50%; }
       50%  { background-position: 100% 50%; }
@@ -269,13 +311,13 @@
       padding: 1px; display: flex; align-items: center; max-width: 100%;
     }
     #assistant-container .rainbow-inner {
-      flex: 1; display: flex; align-items: flex-start; /* <=== IMPORTANTE p/ multi-linhas do textarea */
+      flex: 1; display: flex; align-items: flex-start;
       background: rgba(255,255,255,0.8);
       box-shadow: inset 0 1px 6px rgba(0,0,0,0.05);
       border-radius: 50px; overflow: hidden; position: relative;
     }
 
-    /* Agora definimos um <textarea> auto expansível */
+    /* Textarea auto expansível */
     #assistant-container #serviceassistant-input {
       display: block;
       width: 100%;
@@ -285,16 +327,15 @@
       padding: 8px 12px;
       background: transparent;
       color: #333;
-      border-radius: 10px; /* ou 50px */
-      resize: none;       /* sem "arrastar" manual */
+      border-radius: 10px;
+      resize: none;
       line-height: 1.3em;
-      max-height: 180px;  /* limite vertical */
-      overflow-y: auto;   /* scroll interno se exceder */
+      max-height: 180px;
+      overflow-y: auto;
       transition: height 0.2s ease;
     }
-
     #assistant-container #serviceassistant-input::placeholder {
-      color: transparent; /* placeholder real sempre invisível */
+      color: transparent; /* placeholder real invisível */
     }
 
     /* Placeholder container */
@@ -308,7 +349,7 @@
       display: inline-block;
     }
 
-    /* BOTÕES LATERAIS (Enviar / Limpar) */
+    /* Botões laterais (Enviar / Limpar) */
     #assistant-container #serviceassistant-send {
       background: transparent; border: none; border-radius: 50%;
       width: 32px; height: 32px; color: #007aff; cursor: pointer;
@@ -346,11 +387,8 @@
       #assistant-container #serviceassistant-toggle {
         width: 50px; height: 50px;
       }
-      #assistant-container #serviceassistant-header {
+      #assistant-container #chat-screen-header {
         height: 50px; padding: 0 15px;
-      }
-      #assistant-container #serviceassistant-title h2 {
-        font-size: 16px;
       }
       #assistant-container #avatar {
         width: 35px; height: 35px;
@@ -371,8 +409,7 @@
   </style>
 </head>
 <body>
-  <!-- Removido conteúdo irrelevante ao projeto -->
-  
+
   <!-- Contêiner do chatbot -->
   <div id="assistant-container">
     <!-- BOTÃO FLUTUANTE -->
@@ -385,173 +422,216 @@
       </svg>
     </button>
 
-    <!-- JANELA DO CHAT -->
+    <!-- JANELA PRINCIPAL (envolve Lista + Chat) -->
     <div id="serviceassistant-window">
-      <!-- CABEÇALHO -->
-      <div id="serviceassistant-header">
-        <img src="" alt="Avatar do Usuário" id="avatar">
-        <div id="serviceassistant-title">
-          <h2>Project UX</h2>
+      <!-- LISTA DE CONVERSAS -->
+      <div id="conversation-list">
+        <h2>Suas Conversas</h2>
+        <!-- Exemplo de item de conversa -->
+        <div class="chat-item" data-id="chat1">
+          <strong>Receitas IA</strong> 
         </div>
-        <div id="serviceassistant-status">
-          <span id="status-dot"></span>
-          Estamos online!
+        <div class="chat-item" data-id="chat2">
+          <strong>Posts IA</strong>
         </div>
+        <div class="chat-item" data-id="chat3">
+          <strong>Cálculos IA</strong>
+        </div>
+        <!-- Adicione mais items se quiser -->
       </div>
 
-      <!-- ÁREA DE MENSAGENS -->
-      <div id="serviceassistant-messages">
-        <!-- INDICADOR TYPING -->
-        <div id="serviceassistant-typing-indicator" class="serviceassistant-message assistant">
-          <div class="loading-svg">
-            <!-- 3 círculos pulando -->
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="4" cy="12" r="2">
-                <animate
-                  id="spinner_qFRN"
-                  begin="0;spinner_OcgL.end+0.25s"
-                  attributeName="cy"
-                  calcMode="spline"
-                  dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
-              <circle cx="12" cy="12" r="2">
-                <animate
-                  begin="spinner_qFRN.begin+0.1s"
-                  attributeName="cy"
-                  calcMode="spline"
-                  dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
-              <circle cx="20" cy="12" r="2">
-                <animate
-                  id="spinner_OcgL"
-                  begin="spinner_qFRN.begin+0.2s"
-                  attributeName="cy"
-                  calcMode="spline"
-                  dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
+      <!-- TELA DE CHAT -->
+      <div id="chat-screen">
+        <!-- Cabeçalho do Chat -->
+        <div id="chat-screen-header">
+          <!-- Botão de Voltar p/ Lista -->
+          <button class="back-button" id="backToList">Voltar</button>
+
+          <img src="" alt="Avatar" id="avatar">
+          <div id="serviceassistant-title">
+            <h2 id="chatTitle">Project UX</h2>
+          </div>
+          <div id="serviceassistant-status">
+            <span id="status-dot"></span>
+            Estamos online!
+          </div>
+        </div>
+
+        <!-- ÁREA DE MENSAGENS -->
+        <div id="serviceassistant-messages">
+          <!-- INDICADOR TYPING -->
+          <div id="serviceassistant-typing-indicator" class="serviceassistant-message assistant">
+            <div class="loading-svg">
+              <!-- 3 círculos pulando -->
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                <circle cx="4" cy="12" r="2">
+                  <animate
+                    id="spinner_qFRN"
+                    begin="0;spinner_OcgL.end+0.25s"
+                    attributeName="cy"
+                    calcMode="spline"
+                    dur="0.6s"
+                    values="12;6;12"
+                    keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                  />
+                </circle>
+                <circle cx="12" cy="12" r="2">
+                  <animate
+                    begin="spinner_qFRN.begin+0.1s"
+                    attributeName="cy"
+                    calcMode="spline"
+                    dur="0.6s"
+                    values="12;6;12"
+                    keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                  />
+                </circle>
+                <circle cx="20" cy="12" r="2">
+                  <animate
+                    id="spinner_OcgL"
+                    begin="spinner_qFRN.begin+0.2s"
+                    attributeName="cy"
+                    calcMode="spline"
+                    dur="0.6s"
+                    values="12;6;12"
+                    keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                  />
+                </circle>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- PESQUISA DE SATISFAÇÃO -->
+        <div id="satisfaction-survey">
+          <!-- ... (mesmo layout da pesquisa que você já possui) -->
+          <div class="survey-container">
+            <h3>Como você avalia nosso atendimento?</h3>
+            <div class="emojis">
+              <span class="emoji" data-value="1">😡</span>
+              <span class="emoji" data-value="2">😞</span>
+              <span class="emoji" data-value="3">😐</span>
+              <span class="emoji" data-value="4">🙂</span>
+              <span class="emoji" data-value="5">😃</span>
+            </div>
+            <div id="thank-you-message">
+              <p>Obrigado pelo seu feedback! 😊</p>
+              <button id="close-survey">Encerrar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área de entrada (rodapé) -->
+        <div id="serviceassistant-input-area">
+          <button id="close-assistance-button" aria-label="Encerrar atendimento">
+            <svg viewBox="0 0 24 24">
+              <path d="M18.3 5.71a1 1 0 0 0-1.42 0
+                       L12 10.59 7.12 5.7
+                       a1 1 0 1 0-1.41 1.42L10.59 12
+                       l-4.88 4.88a1 1 0 1 0 1.42 1.42
+                       L12 13.41l4.88 4.88
+                       a1 1 0 0 0 1.42-1.42
+                       L13.41 12l4.88-4.88
+                       a1 1 0 0 0 0-1.41z"/>
             </svg>
+          </button>
+
+          <div class="rainbow-container">
+            <div class="rainbow-inner">
+              <!-- Placeholder "fake" rotativo -->
+              <span class="placeholder-container">
+                <span class="placeholder-text" id="placeholderText"></span>
+              </span>
+              <textarea
+                id="serviceassistant-input"
+                aria-label="Digite sua mensagem"
+                rows="1"
+              ></textarea>
+            </div>
           </div>
+
+          <!-- Botão Enviar -->
+          <button id="serviceassistant-send" aria-label="Enviar mensagem">
+            <svg viewBox="0 0 24 24">
+              <path d="M2.01 21L23 12 2.01 3
+                       2 10l15 2-15 2z"/>
+            </svg>
+          </button>
+
+          <!-- Botão Limpar -->
+          <button id="serviceassistant-clear" aria-label="Limpar chat">
+            <svg viewBox="0 0 24 24">
+              <path d="M15 4V3c0-1.1-.9-2-2-2
+                       h-2c-1.1 0-2 .9-2 2v1H5v2h14
+                       V4h-4zM7 21c0 1.11.89 2 2 2h6
+                       c1.11 0 2-.89 2-2V7H7v14z"/>
+            </svg>
+          </button>
         </div>
-      </div>
-
-      <!-- PESQUISA DE SATISFAÇÃO -->
-      <div id="satisfaction-survey">
-        <div class="survey-container">
-          <h3>Como você avalia nosso atendimento?</h3>
-          <div class="emojis">
-            <span class="emoji" data-value="1">😡</span>
-            <span class="emoji" data-value="2">😞</span>
-            <span class="emoji" data-value="3">😐</span>
-            <span class="emoji" data-value="4">🙂</span>
-            <span class="emoji" data-value="5">😃</span>
-          </div>
-          <div id="thank-you-message">
-            <p>Obrigado pelo seu feedback! 😊</p>
-            <button id="close-survey">Encerrar</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- ÁREA DE ENTRADA (com <textarea> auto-expansível) -->
-      <div id="serviceassistant-input-area">
-        <!-- Botão Encerrar -->
-        <button id="close-assistance-button" aria-label="Encerrar atendimento">
-          <svg viewBox="0 0 24 24">
-            <path d="M18.3 5.71a1 1 0 0 0-1.42 0
-                     L12 10.59 7.12 5.7
-                     a1 1 0 1 0-1.41 1.42L10.59 12
-                     l-4.88 4.88a1 1 0 1 0 1.42 1.42
-                     L12 13.41l4.88 4.88
-                     a1 1 0 0 0 1.42-1.42
-                     L13.41 12l4.88-4.88
-                     a1 1 0 0 0 0-1.41z"/>
-          </svg>
-        </button>
-
-        <div class="rainbow-container">
-          <div class="rainbow-inner">
-            <!-- Placeholder "fake" rotativo -->
-            <span class="placeholder-container">
-              <span class="placeholder-text" id="placeholderText"></span>
-            </span>
-            <!-- TEXTAREA auto-resize -->
-            <textarea
-              id="serviceassistant-input"
-              aria-label="Digite sua mensagem"
-              rows="1"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Botão Enviar -->
-        <button id="serviceassistant-send" aria-label="Enviar mensagem">
-          <svg viewBox="0 0 24 24">
-            <path d="M2.01 21L23 12 2.01 3
-                     2 10l15 2-15 2z"/>
-          </svg>
-        </button>
-
-        <!-- Botão Limpar -->
-        <button id="serviceassistant-clear" aria-label="Limpar chat">
-          <svg viewBox="0 0 24 24">
-            <path d="M15 4V3c0-1.1-.9-2-2-2
-                     h-2c-1.1 0-2 .9-2 2v1H5v2h14
-                     V4h-4zM7 21c0 1.11.89 2 2 2h6
-                     c1.11 0 2-.89 2-2V7H7v14z"/>
-          </svg>
-        </button>
       </div>
     </div>
   </div>
 
   <script>
-    /* =========== LÓGICA DO CHATBOT (com TEXTAREA + placeholder sumir) =========== */
+    /* =========== VARIÁVEIS GLOBAIS ========== */
     let chatOpen = false;
-    const iconChat = `
-      <path d="M20 2H4a2 2 0 0 0-2 2v14
-               a2 2 0 0 0 2 2h14l4 4v-20
-               a2 2 0 0 0-2-2z"></path>`;
-    const iconClose = `
-      <path d="M18.3 5.71a1 1 0 0 0-1.42 0
-               L12 10.59 7.12 5.7
-               a1 1 0 1 0-1.41 1.42L10.59 12
-               l-4.88 4.88a1 1 0 1
-               0 1.42 1.42L12 13.41l4.88 4.88
-               a1 1 0 0
-               0 1.42-1.42L13.41 12l4.88-4.88
-               a1 1 0 0 0 0-1.41z"></path>`;
+    let currentChatId = null; // <-- Qual conversa está aberta agora?
+    
+    // Ícones para o toggle
+    const iconChat = `<path d="M20 2H4a2 2 0 0 0-2 2v14 ..."></path>`;
+    const iconClose= `<path d="M18.3 5.71a1 1 0 0 0-1.42 0 ..."></path>`;
 
+    // Placeholders e Backend
     const placeholders = [
-      "Olá, Como o iTraces funciona?",
-      "Olá, Quais soluções vocês oferecem?",
-      "Posso integrar o iTraces ao meu sistema?",
+      "Olá, Como funciona esta IA?",
+      "Oi, pode me dar sugestões?",
+      "Posso integrar ao meu sistema?"
     ];
     let currentPlaceholderIndex = 0;
     let placeholderInterval;
+    const BACKEND_URL = "https://project-ux-26163010a051.herokuapp.com/api/message"; // seu endpoint
 
-    // Seu backend real (exemplo):
-    const BACKEND_URL = "https://project-ux-26163010a051.herokuapp.com/api/message";
-
-    // Pegando elementos
+    // Seletores
     const toggleBtn         = document.getElementById("serviceassistant-toggle");
     const toggleIcon        = document.getElementById("toggleIcon");
     const chatWindow        = document.getElementById("serviceassistant-window");
-    const textarea          = document.getElementById("serviceassistant-input");
-    const placeholderEl     = document.getElementById("placeholderText");
-    const sendBtn           = document.getElementById("serviceassistant-send");
-    const clearBtn          = document.getElementById("serviceassistant-clear");
+    const conversationList  = document.getElementById("conversation-list");
+    const chatScreen        = document.getElementById("chat-screen");
+    const backToListBtn     = document.getElementById("backToList");
+    const chatTitle         = document.getElementById("chatTitle");
+
     const messagesDiv       = document.getElementById("serviceassistant-messages");
     const typingIndicator   = document.getElementById("serviceassistant-typing-indicator");
+    const placeholderEl     = document.getElementById("placeholderText");
+    const textarea          = document.getElementById("serviceassistant-input");
+    const sendBtn           = document.getElementById("serviceassistant-send");
+    const clearBtn          = document.getElementById("serviceassistant-clear");
     const closeAssistanceBtn= document.getElementById("close-assistance-button");
+
+    /* =====================================================
+       FUNÇÕES PARA LIDAR COM localStorage POR "chatId"
+       Guardamos todas as conversas em um único objeto:
+         {
+           "chat1": [ {sender, text}, ... ],
+           "chat2": [ {sender, text}, ... ],
+           ...
+         }
+    ====================================================== */
+    function getAllChats() {
+      const stored = localStorage.getItem("serviceassistant-conversations");
+      return stored ? JSON.parse(stored) : {};
+    }
+    function saveAllChats(obj) {
+      localStorage.setItem("serviceassistant-conversations", JSON.stringify(obj));
+    }
+    function getMessagesByChat(chatId) {
+      const all = getAllChats();
+      return all[chatId] || [];
+    }
+    function setMessagesByChat(chatId, messagesArray) {
+      const all = getAllChats();
+      all[chatId] = messagesArray;
+      saveAllChats(all);
+    }
 
     /* ========== PLACEHOLDERS ROTATIVOS ========== */
     function startPlaceholderRotation() {
@@ -565,7 +645,7 @@
       if (placeholderInterval) clearInterval(placeholderInterval);
     }
 
-    /* ========== ABRIR/FECHAR CHAT ========== */
+    /* ========== ABRIR/FECHAR JANELA PRINCIPAL ========== */
     function toggleChat() {
       chatOpen = !chatOpen;
       if (chatOpen) {
@@ -574,6 +654,9 @@
         chatWindow.style.display = "flex";
         toggleIcon.innerHTML = iconClose;
         localStorage.setItem("chatState", "open");
+        // Ao abrir, mostramos a LISTA e escondemos o CHAT
+        showConversationList();
+
       } else {
         chatWindow.classList.remove("open");
         chatWindow.classList.add("close");
@@ -587,36 +670,91 @@
     function initializeChatState() {
       const savedState = localStorage.getItem("chatState");
       if (savedState === "open") {
-        chatOpen = false; 
+        chatOpen = false; // forçar reabertura
         toggleChat();
       }
     }
 
-    /* ========== LOCALSTORAGE DE MENSAGENS ========== */
-    function getStoredMessages() {
-      const stored = localStorage.getItem("serviceassistant-messages");
-      return stored ? JSON.parse(stored) : [];
+    /* ========== MOSTRAR LISTA OU MOSTRAR CHAT ========== */
+    function showConversationList() {
+      conversationList.style.display = "flex";
+      chatScreen.style.display = "none";
+      currentChatId = null; // ninguém selecionado
     }
-    function saveMessage(sender, text) {
-      const msgs = getStoredMessages();
-      msgs.push({ sender, text });
-      localStorage.setItem("serviceassistant-messages", JSON.stringify(msgs));
+
+    function showChatScreen(chatId, chatName="Conversa") {
+      conversationList.style.display = "none";
+      chatScreen.style.display = "flex";
+      chatTitle.textContent = chatName;
+      currentChatId = chatId;
+
+      // Ao abrir o chat, carregamos as mensagens desse chat
+      loadMessagesForChat(chatId);
     }
-    function loadMessages() {
-      const msgs = getStoredMessages();
+
+    // Carregar mensagens de "chatId" específico e exibir
+    function loadMessagesForChat(chatId) {
+      messagesDiv.innerHTML = "";
+      messagesDiv.appendChild(typingIndicator); // recolocar typingIndicator
+
+      const msgs = getMessagesByChat(chatId);
       msgs.forEach(m => {
         appendMessage(m.sender, m.text, false, false);
       });
+      scrollMessagesToBottom();
+    }
+
+    /* Ao clicar em cada item da lista (Receitas IA, etc.) */
+    document.querySelectorAll(".chat-item").forEach(item => {
+      item.addEventListener("click", () => {
+        const chatId = item.dataset.id; // ex.: "chat1"
+        const chatName = item.innerText.trim() || "Conversa";
+        showChatScreen(chatId, chatName);
+      });
+    });
+
+    // Botão de voltar no header do chat
+    backToListBtn.addEventListener("click", () => {
+      showConversationList();
+    });
+
+    /* ========== EXIBIR MENSAGEM NO DOM ========== */
+    function appendMessage(sender, text, save=true, isNew=(sender==="assistant")) {
+      if (!currentChatId) return; // se não tiver chat selecionado, não faz nada
+
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("serviceassistant-message", sender);
+
+      // negrito simples **texto**
+      const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+      // inserir antes do typingIndicator
+      messagesDiv.insertBefore(msgDiv, typingIndicator);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      if (sender==="assistant" && isNew) {
+        // Efeito typewriter
+        typeWriterEffect(msgDiv, formattedText, 10, () => {
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+      } else {
+        msgDiv.innerHTML = formattedText;
+      }
+
+      // Se vamos salvar no localStorage
+      if (save) {
+        const msgs = getMessagesByChat(currentChatId);
+        msgs.push({ sender, text });
+        setMessagesByChat(currentChatId, msgs);
+      }
     }
 
     /* ========== TYPEWRITER ========== */
     function typeWriterEffect(el, text, speed=10, cb) {
       let i=0;
-      const processedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      
       function typeNextChar() {
-        if (i < processedText.length) {
-          el.innerHTML += processedText.charAt(i);
+        if (i < text.length) {
+          el.innerHTML += text.charAt(i);
           i++;
           setTimeout(typeNextChar, speed);
         } else {
@@ -624,25 +762,6 @@
         }
       }
       typeNextChar();
-    }
-
-    /* ========== APPEND MESSAGE ========== */
-    function appendMessage(sender, text, save=true, isNew=(sender==="assistant")) {
-      const msgDiv = document.createElement("div");
-      msgDiv.classList.add("serviceassistant-message", sender);
-      const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      
-      messagesDiv.insertBefore(msgDiv, typingIndicator);
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-      if (sender==="assistant" && isNew) {
-        typeWriterEffect(msgDiv, formattedText, 10, () => {
-          messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        });
-      } else {
-        msgDiv.innerHTML = formattedText;
-      }
-      if (save) saveMessage(sender, text);
     }
 
     /* ========== TYPING INDICATOR ========== */
@@ -658,19 +777,22 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    /* ========== ENVIAR MENSAGEM ========== */
+    /* ========== ENVIAR MENSAGEM (Chamar backend) ========== */
     async function sendMessage(text) {
-      if (!text) return;
+      if (!text || !currentChatId) return;
+
       appendMessage("user", text, true, false);
       textarea.value = "";
       textarea.disabled = true;
       showTypingIndicator();
 
-      // Reset altura do textarea
       autoResizeTextarea();
 
       try {
-        const msgs = getStoredMessages();
+        // histórico atual desse chat
+        const msgs = getMessagesByChat(currentChatId);
+
+        // Envia p/ backend
         const resp = await fetch(BACKEND_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -683,7 +805,7 @@
         appendMessage("assistant", data.reply || "Sem resposta do backend.", true, true);
       } catch (err) {
         hideTypingIndicator();
-        appendMessage("assistant","Ocorreu um erro. Tente novamente mais tarde.",true,false);
+        appendMessage("assistant", "Ocorreu um erro. Tente novamente mais tarde.", true, false);
         console.error(err);
       } finally {
         textarea.disabled = false;
@@ -691,48 +813,18 @@
       }
     }
 
-    /* ========== LIMPAR CHAT ========== */
+    /* ========== LIMPAR O CHAT ATUAL ========== */
     function clearChat() {
-      localStorage.removeItem("serviceassistant-messages");
-      messagesDiv.innerHTML = `
-        <div id="serviceassistant-typing-indicator" class="serviceassistant-message assistant">
-          <div class="loading-svg">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="4" cy="12" r="2">
-                <animate id="spinner_qFRN"
-                  begin="0;spinner_OcgL.end+0.25s"
-                  attributeName="cy"
-                  calcMode="spline" dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
-              <circle cx="12" cy="12" r="2">
-                <animate
-                  begin="spinner_qFRN.begin+0.1s"
-                  attributeName="cy"
-                  calcMode="spline" dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
-              <circle cx="20" cy="12" r="2">
-                <animate id="spinner_OcgL"
-                  begin="spinner_qFRN.begin+0.2s"
-                  attributeName="cy"
-                  calcMode="spline" dur="0.6s"
-                  values="12;6;12"
-                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
-                />
-              </circle>
-            </svg>
-          </div>
-        </div>
-      `;
+      if (!currentChatId) return;
+      // Apaga só o histórico do chat em questão
+      setMessagesByChat(currentChatId, []);
+      // Limpa visual
+      messagesDiv.innerHTML = "";
+      messagesDiv.appendChild(typingIndicator);
       scrollMessagesToBottom();
     }
 
-    /* ========== PESQUISA SATISFAÇÃO ========== */
+    /* ========== PESQUISA DE SATISFAÇÃO / ENCERRAR ========== */
     function showSatisfactionSurvey() {
       document.getElementById("satisfaction-survey").classList.add("active");
     }
@@ -746,10 +838,10 @@
       showSatisfactionSurvey();
     }
 
-    /* ========== AUTO-RESIZE TEXTAREA + PLACEHOLDER LÓGICA ========== */
+    /* ========== AUTO-RESIZE TEXTAREA + PLACEHOLDER ========== */
     function autoResizeTextarea() {
       textarea.style.height = "auto";
-      textarea.style.height = (textarea.scrollHeight) + "px"; 
+      textarea.style.height = (textarea.scrollHeight) + "px";
     }
     function handleInputChange() {
       const hasText = textarea.value.trim().length > 0;
@@ -760,10 +852,10 @@
     /* ========== EVENTOS ========== */
     window.addEventListener("load", () => {
       initializeChatState();
-      loadMessages();
       startPlaceholderRotation();
       autoResizeTextarea();
     });
+
     window.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         startPlaceholderRotation();
@@ -775,12 +867,11 @@
     // Botão flutuante
     toggleBtn.addEventListener("click", toggleChat);
 
-    // Enviar
+    // Botão Enviar
     sendBtn.addEventListener("click", () => {
       const txt = textarea.value.trim();
       sendMessage(txt);
     });
-    // Enter p/ enviar
     textarea.addEventListener("keypress", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -788,16 +879,15 @@
         sendMessage(txt);
       }
     });
-    // Ao digitar => autoResize + sumir placeholder
     textarea.addEventListener("input", handleInputChange);
 
-    // Limpar
+    // Botão Limpar
     clearBtn.addEventListener("click", () => {
-      if (confirm("Tem certeza que deseja limpar todas as mensagens?")) {
+      if (confirm("Tem certeza que deseja limpar este chat?")) {
         clearChat();
       }
     });
-    // Encerrar => pesquisa
+    // Botão “Encerrar” => pesquisa
     closeAssistanceBtn.addEventListener("click", () => {
       finalizeChat();
     });
