@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>iTracesAssistant - Expand + Placeholder Sumir</title>
+  <style>
+    /* =====================================================
+       ENCÁPSULADO EM #assistant-container: Não afeta o site
+       ===================================================== */
+    #assistant-container {
+      position: relative;
+      z-index: 9999; /* Fica acima do seu layout */
+    }
+
+    /* Botão flutuante (abre/fecha) */
+    #assistant-container #serviceassistant-toggle {
+      position: fixed;
+      bottom: 30px; right: 30px;
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, #c7c7c7, #ffffff);
+      box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    #assistant-container #serviceassistant-toggle:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    }
+    #assistant-container #toggleIcon {
+      width: 30px; height: 30px; fill: #007aff;
+      transition: transform 0.4s, opacity 0.4s;
+    }
+    #assistant-container #serviceassistant-toggle:hover #toggleIcon {
+      transform: rotate(-15deg);
+    }
+
+    /* Janela do chat */
+    #assistant-container #serviceassistant-window {
+      position: fixed;
+      bottom: 100px; right: 30px;
+      width: 480px; max-width: 90%;
+      height: 580px; max-height: 80%;
+      background: rgba(255,255,255,0.6);
+      backdrop-filter: blur(28px) saturate(1.5);
+      border-radius: 20px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      transform-origin: bottom right;
+    }
+    @keyframes assistantOpenWindow {
+      0%   { transform: scale(0.75) rotate(5deg); opacity: 0; }
+      50%  { transform: scale(1.05) rotate(-3deg); opacity: 1; }
+      100% { transform: scale(1) rotate(0deg);     opacity: 1; }
+    }
+    @keyframes assistantCloseWindow {
+      0%   { transform: scale(1) rotate(0deg);     opacity: 1; }
+      50%  { transform: scale(1.05) rotate(-3deg); opacity: 0.5; }
+      100% { transform: scale(0.75) rotate(5deg);  opacity: 0;   }
+    }
+    #assistant-container .open {
+      display: flex;
+      animation: assistantOpenWindow 0.6s forwards cubic-bezier(0.19,1,0.22,1);
+    }
+    #assistant-container .close {
+      animation: assistantCloseWindow 0.4s forwards cubic-bezier(0.19,1,0.22,1);
+    }
+
+    /* Cabeçalho */
+    #assistant-container #serviceassistant-header {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(15px);
+      color: #333;
+      height: 60px; padding: 0 20px;
+      display: flex; align-items: center;
+      justify-content: flex-start; gap: 10px;
+      border-top-left-radius: 20px; border-top-right-radius: 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.3);
+      position: relative;
+    }
+    #assistant-container #avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%; object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    #assistant-container #avatar[src=""] {
+      content: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABKklEQVRYR+2WwUoCURSG/9s6g2CCKAhx5jBCU/xE1PpD6EjUKSCkAG1KMOrUChTxGUqIJX/QqVjCA8yr3/kWC+mfMT7YJfqZJ5RrfCCPhJaCfsC4yrH3gHtMAHa+iPF6mDiDEpYi4rNR9A1nAAL8D7ywD3BM8AWefAHpTP6CuN79P4uxz6GpPEr443Tq1+ogZw1zQK6nZOYQhI9bR6Rsy+OoQwkwJRl2sV2KFKRR/xccYQ40EhXs/7B0SGZnGCWLEpEGKppj8NDnFh9ZzboyC9PGNQiQNFbo6mEF3vVqvnm0Oug/F+n4aGh6eXyQwLBdNGInS31J1CqApXGUcpZzBAjU7hv2vW1ZPlC/dcPdKcSP/AAXlhfHk1CeIsAAAAAElFTkSuQmCC");
+    }
+    #assistant-container #serviceassistant-title h2 {
+      margin: 0; font-size: 18px; font-weight: 600;
+      color: #333; text-shadow: 0 0 1px rgba(255,255,255,0.7);
+    }
+    #assistant-container #serviceassistant-status {
+      position: absolute; right: 20px; bottom: -18px;
+      font-size: 12px; color: #555;
+      display: flex; align-items: center; gap: 5px;
+    }
+    #assistant-container #status-dot {
+      width: 8px; height: 8px; border-radius: 50%; background-color: #2ecc71;
+    }
+
+    /* Área de mensagens */
+    #assistant-container #serviceassistant-messages {
+      flex: 1; padding: 20px; overflow-y: auto;
+      display: flex; flex-direction: column; position: relative;
+    }
+    #assistant-container #serviceassistant-messages::-webkit-scrollbar { width: 6px; }
+    #assistant-container #serviceassistant-messages::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.2); border-radius: 3px;
+    }
+    #assistant-container .serviceassistant-message {
+      margin-bottom: 15px; max-width: 75%;
+      padding: 14px 18px; border-radius: 14px;
+      font-size: 15px; line-height: 1.4;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.1);
+      background-color: rgba(255,255,255,0.6);
+      backdrop-filter: blur(15px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.3);
+      animation: fadeInUp 0.4s forwards; opacity: 0;
+      color: #333; white-space: pre-wrap;
+    }
+    #assistant-container .serviceassistant-message.assistant {
+      align-self: flex-start;
+    }
+    #assistant-container .serviceassistant-message.user {
+      align-self: flex-end;
+      background: rgba(0,122,255,0.1);
+      border-color: rgba(0,122,255,0.3);
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Indicador de digitando */
+    #assistant-container #serviceassistant-typing-indicator {
+      display: none;
+      align-self: flex-start;
+      margin-bottom: 15px;
+    }
+    #assistant-container .loading-svg {
+      width: 60px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Pesquisa Satisfação */
+    #assistant-container #satisfaction-survey {
+      position: fixed;
+      top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 90%; max-width: 400px;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(15px) saturate(1.2);
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 20px;
+      box-shadow: 0 4px 30px rgba(0,0,0,0.2);
+      padding: 20px; z-index: 1001;
+      opacity: 0; visibility: hidden;
+      overflow: hidden;
+      transition: opacity 0.5s ease, visibility 0.5s ease;
+    }
+    #assistant-container #satisfaction-survey.active {
+      opacity: 1; visibility: visible;
+    }
+    #assistant-container #satisfaction-survey::before {
+      content: "";
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAU0lEQVQYV2NkwAT/GaWYAgPbOdkZmBjYTY6MRQZgMGFJoANhZTdpCLiG5kSYyAVohQGBQsADHol2bz4Q6ItkEbmOGFYyAjCRnuYYVgAi8m94jBV4hgAwmwC1/xD5CY6kAAAAASUVORK5CYII=');
+      opacity: 0.03; pointer-events: none; border-radius: 20px;
+    }
+    #assistant-container .survey-container {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center;
+      animation: fadeScale 0.5s cubic-bezier(0.19,1,0.22,1);
+    }
+    @keyframes fadeScale {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    #assistant-container .survey-container h3 {
+      margin-bottom: 15px; font-size: 16px; color: #333; text-align: center;
+    }
+    #assistant-container .emojis {
+      display: flex; justify-content: space-between; margin-bottom: 15px;
+    }
+    #assistant-container .emoji {
+      font-size: 28px; cursor: pointer; transition: transform 0.2s;
+    }
+    #assistant-container .emoji:hover {
+      transform: scale(1.2);
+    }
+    @keyframes reward {
+      0%{ transform: scale(1);}
+      50%{transform: scale(1.5);}
+      100%{transform: scale(1);}
+    }
+    #assistant-container .emoji.reward {
+      animation: reward 0.5s ease;
+    }
+    #assistant-container #thank-you-message {
+      text-align: center; display: none;
+    }
+    #assistant-container #thank-you-message.active {
+      display: block;
+    }
+    #assistant-container #thank-you-message p {
+      margin-bottom: 15px; font-size: 14px; color: #555;
+    }
+    #assistant-container #close-survey {
+      padding: 8px 16px;
+      background-color: rgba(76,175,80,0.7);
+      border: none; border-radius: 5px; color: #fff; cursor: pointer; font-size: 14px;
+      transition: background-color 0.3s;
+    }
+    #assistant-container #close-survey:hover {
+      background-color: rgba(69,160,73,0.9);
+    }
+
+    /* Área de entrada */
+    #assistant-container #serviceassistant-input-area {
+      padding: 12px; display: flex; align-items: center;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(20px) saturate(1.5);
+      border-bottom-left-radius: 20px; border-bottom-right-radius: 20px;
+      position: relative; justify-content: flex-start; gap: 8px;
+    }
+    #assistant-container #close-assistance-button {
+      background: rgba(255,59,48,0.1);
+      backdrop-filter: blur(15px) saturate(1.5);
+      border: 1px solid rgba(255,59,48,0.2);
+      border-radius: 50%;
+      width: 40px; height: 40px; color: #ff3b30; cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, background-color 0.3s;
+    }
+    #assistant-container #close-assistance-button:hover {
+      transform: scale(1.1);
+      background-color: rgba(255,59,48,0.2);
+    }
+    #assistant-container #close-assistance-button svg {
+      width: 18px; height: 18px; fill: #ff3b30;
+    }
+
+    /* ARCO-ÍRIS SUAVE */
+    @keyframes rainbow {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    #assistant-container .rainbow-container {
+      flex: 1; position: relative; border-radius: 50px;
+      background: linear-gradient(
+        90deg,
+        rgba(255,0,0,0.35),
+        rgba(255,127,0,0.35),
+        rgba(255,255,0,0.35),
+        rgba(0,255,0,0.35),
+        rgba(0,0,255,0.35),
+        rgba(139,0,255,0.35),
+        rgba(255,0,0,0.35)
+      );
+      background-size: 300% 300%;
+      animation: rainbow 10s linear infinite;
+      padding: 1px; display: flex; align-items: center; max-width: 100%;
+    }
+    #assistant-container .rainbow-inner {
+      flex: 1; display: flex; align-items: flex-start; /* <=== IMPORTANTE p/ multi-linhas do textarea */
+      background: rgba(255,255,255,0.8);
+      box-shadow: inset 0 1px 6px rgba(0,0,0,0.05);
+      border-radius: 50px; overflow: hidden; position: relative;
+    }
+
+    /* Agora definimos um <textarea> auto expansível */
+    #assistant-container #serviceassistant-input {
+      display: block;
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      padding: 8px 12px;
+      background: transparent;
+      color: #333;
+      border-radius: 10px; /* ou 50px */
+      resize: none;       /* sem "arrastar" manual */
+      line-height: 1.3em;
+      max-height: 180px;  /* limite vertical */
+      overflow-y: auto;   /* scroll interno se exceder */
+      transition: height 0.2s ease;
+    }
+
+    #assistant-container #serviceassistant-input::placeholder {
+      color: transparent; /* placeholder real sempre invisível */
+    }
+
+    /* Placeholder container */
+    #assistant-container .placeholder-container {
+      position: absolute; left: 12px; top: 8px;
+      pointer-events: none; color: #999; font-size: 14px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 80%; transition: opacity 0.3s;
+    }
+    #assistant-container .placeholder-text {
+      display: inline-block;
+    }
+
+    /* BOTÕES LATERAIS (Enviar / Limpar) */
+    #assistant-container #serviceassistant-send {
+      background: transparent; border: none; border-radius: 50%;
+      width: 32px; height: 32px; color: #007aff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    #assistant-container #serviceassistant-send:hover {
+      transform: scale(1.1);
+      background-color: rgba(0,122,255,0.1);
+    }
+    #assistant-container #serviceassistant-send svg {
+      width: 16px; height: 16px; fill: #007aff;
+    }
+    #assistant-container #serviceassistant-clear {
+      background: rgba(255,59,48,0.1);
+      border: none; border-radius: 50%;
+      width: 40px; height: 40px; color: #ff3b30; cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+    #assistant-container #serviceassistant-clear:hover {
+      transform: scale(1.1);
+      background-color: rgba(255,59,48,0.2);
+    }
+    #assistant-container #serviceassistant-clear svg {
+      width: 18px; height: 18px; fill: #ff3b30;
+    }
+
+    /* Responsivo */
+    @media (max-width: 600px) {
+      #assistant-container #serviceassistant-window {
+        width: 90%; height: 80%; bottom: 80px; right: 5%;
+      }
+      #assistant-container #serviceassistant-toggle {
+        width: 50px; height: 50px;
+      }
+      #assistant-container #serviceassistant-header {
+        height: 50px; padding: 0 15px;
+      }
+      #assistant-container #serviceassistant-title h2 {
+        font-size: 16px;
+      }
+      #assistant-container #avatar {
+        width: 35px; height: 35px;
+      }
+      #assistant-container #serviceassistant-send {
+        width: 32px; height: 32px;
+      }
+      #assistant-container .rainbow-container {
+        max-width: 60%;
+      }
+      #assistant-container #close-assistance-button {
+        width: 32px; height: 32px; margin-right: 5px;
+      }
+      #assistant-container #serviceassistant-clear {
+        width: 32px; height: 32px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Exemplo de conteúdo do seu site -->
+  <main>
+    <h1>Meu Site</h1>
+    <p>Conteúdo, imagens, etc.</p>
+    <img src="https://via.placeholder.com/300x150" alt="Minha Imagem" />
+  </main>
+
+  <!-- Contêiner do chatbot -->
+  <div id="assistant-container">
+    <!-- BOTÃO FLUTUANTE -->
+    <button id="serviceassistant-toggle" aria-label="Abrir/Fechar Chat">
+      <svg id="toggleIcon" viewBox="0 0 24 24">
+        <!-- Ícone inicial: "chat" -->
+        <path d="M20 2H4a2 2 0 0 0-2 2v14
+                 a2 2 0 0 0 2 2h14l4 4v-20
+                 a2 2 0 0 0-2-2z"/>
+      </svg>
+    </button>
+
+    <!-- JANELA DO CHAT -->
+    <div id="serviceassistant-window">
+      <!-- CABEÇALHO -->
+      <div id="serviceassistant-header">
+        <img src="" alt="Avatar do Usuário" id="avatar">
+        <div id="serviceassistant-title">
+          <h2>iTracesAssistant</h2>
+        </div>
+        <div id="serviceassistant-status">
+          <span id="status-dot"></span>
+          Estamos online!
+        </div>
+      </div>
+
+      <!-- ÁREA DE MENSAGENS -->
+      <div id="serviceassistant-messages">
+        <!-- INDICADOR TYPING -->
+        <div id="serviceassistant-typing-indicator" class="serviceassistant-message assistant">
+          <div class="loading-svg">
+            <!-- 3 círculos pulando -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="4" cy="12" r="2">
+                <animate
+                  id="spinner_qFRN"
+                  begin="0;spinner_OcgL.end+0.25s"
+                  attributeName="cy"
+                  calcMode="spline"
+                  dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+              <circle cx="12" cy="12" r="2">
+                <animate
+                  begin="spinner_qFRN.begin+0.1s"
+                  attributeName="cy"
+                  calcMode="spline"
+                  dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+              <circle cx="20" cy="12" r="2">
+                <animate
+                  id="spinner_OcgL"
+                  begin="spinner_qFRN.begin+0.2s"
+                  attributeName="cy"
+                  calcMode="spline"
+                  dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- PESQUISA DE SATISFAÇÃO -->
+      <div id="satisfaction-survey">
+        <div class="survey-container">
+          <h3>Como você avalia nosso atendimento?</h3>
+          <div class="emojis">
+            <span class="emoji" data-value="1">😡</span>
+            <span class="emoji" data-value="2">😞</span>
+            <span class="emoji" data-value="3">😐</span>
+            <span class="emoji" data-value="4">🙂</span>
+            <span class="emoji" data-value="5">😃</span>
+          </div>
+          <div id="thank-you-message">
+            <p>Obrigado pelo seu feedback! 😊</p>
+            <button id="close-survey">Encerrar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ÁREA DE ENTRADA (com <textarea> auto-expansível) -->
+      <div id="serviceassistant-input-area">
+        <!-- Botão Encerrar -->
+        <button id="close-assistance-button" aria-label="Encerrar atendimento">
+          <svg viewBox="0 0 24 24">
+            <path d="M18.3 5.71a1 1 0 0 0-1.42 0
+                     L12 10.59 7.12 5.7
+                     a1 1 0 1 0-1.41 1.42L10.59 12
+                     l-4.88 4.88a1 1 0 1 0 1.42 1.42
+                     L12 13.41l4.88 4.88
+                     a1 1 0 0 0 1.42-1.42
+                     L13.41 12l4.88-4.88
+                     a1 1 0 0 0 0-1.41z"/>
+          </svg>
+        </button>
+
+        <div class="rainbow-container">
+          <div class="rainbow-inner">
+            <!-- Placeholder "fake" rotativo -->
+            <span class="placeholder-container">
+              <span class="placeholder-text" id="placeholderText"></span>
+            </span>
+            <!-- TEXTAREA auto-resize -->
+            <textarea
+              id="serviceassistant-input"
+              aria-label="Digite sua mensagem"
+              rows="1"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Botão Enviar -->
+        <button id="serviceassistant-send" aria-label="Enviar mensagem">
+          <svg viewBox="0 0 24 24">
+            <path d="M2.01 21L23 12 2.01 3
+                     2 10l15 2-15 2z"/>
+          </svg>
+        </button>
+
+        <!-- Botão Limpar -->
+        <button id="serviceassistant-clear" aria-label="Limpar chat">
+          <svg viewBox="0 0 24 24">
+            <path d="M15 4V3c0-1.1-.9-2-2-2
+                     h-2c-1.1 0-2 .9-2 2v1H5v2h14
+                     V4h-4zM7 21c0 1.11.89 2 2 2h6
+                     c1.11 0 2-.89 2-2V7H7v14z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========== LÓGICA DO CHATBOT (com TEXTAREA + placeholder sumir) =========== */
+    let chatOpen = false;
+    const iconChat = `
+      <path d="M20 2H4a2 2 0 0 0-2 2v14
+               a2 2 0 0 0 2 2h14l4 4v-20
+               a2 2 0 0 0-2-2z"></path>`;
+    const iconClose = `
+      <path d="M18.3 5.71a1 1 0 0 0-1.42 0
+               L12 10.59 7.12 5.7
+               a1 1 0 1 0-1.41 1.42L10.59 12
+               l-4.88 4.88a1 1 0 1
+               0 1.42 1.42L12 13.41l4.88 4.88
+               a1 1 0 0
+               0 1.42-1.42L13.41 12l4.88-4.88
+               a1 1 0 0 0 0-1.41z"></path>`;
+
+    const placeholders = [
+      "Olá, Como o iTraces funciona?",
+      "Olá, Quais soluções vocês oferecem?",
+      "Posso integrar o iTraces ao meu sistema?",
+    ];
+    let currentPlaceholderIndex = 0;
+    let placeholderInterval;
+
+    // Seu backend real: https://project-ux-26163010a051.herokuapp.com/
+    const BACKEND_URL = "https://project-ux-26163010a051.herokuapp.com/api/message";
+
+    // Pegando elementos
+    const toggleBtn         = document.getElementById("serviceassistant-toggle");
+    const toggleIcon        = document.getElementById("toggleIcon");
+    const chatWindow        = document.getElementById("serviceassistant-window");
+    const textarea          = document.getElementById("serviceassistant-input");
+    const placeholderEl     = document.getElementById("placeholderText");
+    const sendBtn           = document.getElementById("serviceassistant-send");
+    const clearBtn          = document.getElementById("serviceassistant-clear");
+    const messagesDiv       = document.getElementById("serviceassistant-messages");
+    const typingIndicator   = document.getElementById("serviceassistant-typing-indicator");
+    const closeAssistanceBtn= document.getElementById("close-assistance-button");
+
+    /* ========== PLACEHOLDERS ROTATIVOS ========== */
+    function startPlaceholderRotation() {
+      placeholderEl.textContent = placeholders[currentPlaceholderIndex] || "";
+      placeholderInterval = setInterval(() => {
+        currentPlaceholderIndex = (currentPlaceholderIndex + 1) % placeholders.length;
+        placeholderEl.textContent = placeholders[currentPlaceholderIndex] || "";
+      }, 3000);
+    }
+    function stopPlaceholderRotation() {
+      if (placeholderInterval) clearInterval(placeholderInterval);
+    }
+
+    /* ========== ABRIR/FECHAR CHAT ========== */
+    function toggleChat() {
+      chatOpen = !chatOpen;
+      if (chatOpen) {
+        chatWindow.classList.remove("close");
+        chatWindow.classList.add("open");
+        chatWindow.style.display = "flex";
+        toggleIcon.innerHTML = iconClose;
+        localStorage.setItem("chatState", "open");
+      } else {
+        chatWindow.classList.remove("open");
+        chatWindow.classList.add("close");
+        setTimeout(() => {
+          chatWindow.style.display = "none";
+        }, 400);
+        toggleIcon.innerHTML = iconChat;
+        localStorage.setItem("chatState", "closed");
+      }
+    }
+    function initializeChatState() {
+      const savedState = localStorage.getItem("chatState");
+      if (savedState === "open") {
+        chatOpen = false; 
+        toggleChat();
+      }
+    }
+
+    /* ========== LOCALSTORAGE DE MENSAGENS ========== */
+    function getStoredMessages() {
+      const stored = localStorage.getItem("serviceassistant-messages");
+      return stored ? JSON.parse(stored) : [];
+    }
+    function saveMessage(sender, text) {
+      const msgs = getStoredMessages();
+      msgs.push({ sender, text });
+      localStorage.setItem("serviceassistant-messages", JSON.stringify(msgs));
+    }
+    function loadMessages() {
+      const msgs = getStoredMessages();
+      msgs.forEach(m => {
+        appendMessage(m.sender, m.text, false, false);
+      });
+    }
+
+    /* ========== TYPEWRITER ========== */
+    function typeWriterEffect(el, text, speed=10, cb) { // Velocidade alterada para 10ms
+      let i=0;
+      const processedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Pré-processa o texto
+      
+      function typeNextChar() {
+        if (i < processedText.length) {
+          el.innerHTML += processedText.charAt(i); // Usa innerHTML para renderizar tags
+          i++;
+          setTimeout(typeNextChar, speed);
+        } else {
+          // Opcional: Callback após concluir a digitação
+          cb && cb();
+        }
+      }
+      typeNextChar();
+    }
+
+    /* ========== APPEND MESSAGE ========== */
+    function appendMessage(sender, text, save=true, isNew=(sender==="assistant")) {
+      const msgDiv = document.createElement("div");
+      msgDiv.classList.add("serviceassistant-message", sender);
+      
+      // Processa todas as mensagens para converter ** para negrito
+      const formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      messagesDiv.insertBefore(msgDiv, typingIndicator);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+      if (sender==="assistant" && isNew) {
+        typeWriterEffect(msgDiv, formattedText, 10, () => { // Velocidade ajustada aqui também
+          messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+      } else {
+        msgDiv.innerHTML = formattedText; // Usa innerHTML para renderização imediata
+      }
+      if (save) saveMessage(sender, text);
+    }
+
+    /* ========== TYPING INDICATOR ========== */
+    function showTypingIndicator() {
+      typingIndicator.style.display = "flex";
+      scrollMessagesToBottom();
+    }
+    function hideTypingIndicator() {
+      typingIndicator.style.display = "none";
+      scrollMessagesToBottom();
+    }
+    function scrollMessagesToBottom() {
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    /* ========== ENVIAR MENSAGEM ========== */
+    async function sendMessage(text) {
+      if (!text) return;
+      appendMessage("user", text, true, false);
+      textarea.value = "";
+      textarea.disabled = true;
+      showTypingIndicator();
+
+      // Reset altura do textarea
+      autoResizeTextarea();
+
+      try {
+        const msgs = getStoredMessages();
+        const resp = await fetch(BACKEND_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: msgs })
+        });
+        if (!resp.ok) throw new Error(`Erro HTTP: ${resp.status}`);
+
+        const data = await resp.json();
+        hideTypingIndicator();
+        appendMessage("assistant", data.reply || "Sem resposta do backend.", true, true);
+      } catch (err) {
+        hideTypingIndicator();
+        appendMessage("assistant","Ocorreu um erro. Tente novamente mais tarde.",true,false);
+        console.error(err);
+      } finally {
+        textarea.disabled = false;
+        textarea.focus();
+      }
+    }
+
+    /* ========== LIMPAR CHAT ========== */
+    function clearChat() {
+      localStorage.removeItem("serviceassistant-messages");
+      messagesDiv.innerHTML = `
+        <div id="serviceassistant-typing-indicator" class="serviceassistant-message assistant">
+          <div class="loading-svg">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="4" cy="12" r="2">
+                <animate id="spinner_qFRN"
+                  begin="0;spinner_OcgL.end+0.25s"
+                  attributeName="cy"
+                  calcMode="spline" dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+              <circle cx="12" cy="12" r="2">
+                <animate
+                  begin="spinner_qFRN.begin+0.1s"
+                  attributeName="cy"
+                  calcMode="spline" dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+              <circle cx="20" cy="12" r="2">
+                <animate id="spinner_OcgL"
+                  begin="spinner_qFRN.begin+0.2s"
+                  attributeName="cy"
+                  calcMode="spline" dur="0.6s"
+                  values="12;6;12"
+                  keySplines=".33,.66,.66,1;.33,0,.66,.33"
+                />
+              </circle>
+            </svg>
+          </div>
+        </div>
+      `;
+      scrollMessagesToBottom();
+    }
+
+    /* ========== PESQUISA SATISFAÇÃO ========== */
+    function showSatisfactionSurvey() {
+      document.getElementById("satisfaction-survey").classList.add("active");
+    }
+    function hideSatisfactionSurvey() {
+      const s = document.getElementById("satisfaction-survey");
+      s.classList.remove("active");
+      document.querySelector(".emojis").style.display = "flex";
+      document.getElementById("thank-you-message").classList.remove("active");
+    }
+    function finalizeChat() {
+      showSatisfactionSurvey();
+    }
+
+    /* ========== AUTO-RESIZE TEXTAREA + PLACEHOLDER LÓGICA ========== */
+    function autoResizeTextarea() {
+      textarea.style.height = "auto"; // Reseta a altura
+      textarea.style.height = (textarea.scrollHeight) + "px"; 
+    }
+    function handleInputChange() {
+      // Ao digitar, sumir placeholder se tiver conteúdo
+      const hasText = textarea.value.trim().length > 0;
+      document.querySelector(".placeholder-container").style.opacity = hasText ? "0" : "1";
+      autoResizeTextarea();
+    }
+
+    /* ========== EVENTOS ========== */
+    window.addEventListener("load", () => {
+      initializeChatState();
+      loadMessages();
+      startPlaceholderRotation();
+      autoResizeTextarea();
+    });
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        startPlaceholderRotation();
+      } else {
+        stopPlaceholderRotation();
+      }
+    });
+
+    // Botão flutuante
+    toggleBtn.addEventListener("click", toggleChat);
+
+    // Enviar
+    sendBtn.addEventListener("click", () => {
+      const txt = textarea.value.trim();
+      sendMessage(txt);
+    });
+    // Enter p/ enviar
+    textarea.addEventListener("keypress", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        const txt = textarea.value.trim();
+        sendMessage(txt);
+      }
+    });
+    // Ao digitar => autoResize + sumir placeholder
+    textarea.addEventListener("input", handleInputChange);
+
+    // Limpar
+    clearBtn.addEventListener("click", () => {
+      if (confirm("Tem certeza que deseja limpar todas as mensagens?")) {
+        clearChat();
+      }
+    });
+    // Encerrar => pesquisa
+    closeAssistanceBtn.addEventListener("click", () => {
+      finalizeChat();
+    });
+
+    // Emojis de pesquisa
+    document.querySelectorAll(".emoji").forEach(emoji => {
+      emoji.addEventListener("click", () => {
+        const val = emoji.getAttribute("data-value");
+        if (val >= 4) {
+          emoji.classList.add("reward");
+          setTimeout(() => emoji.classList.remove("reward"), 500);
+        }
+        document.getElementById("thank-you-message").classList.add("active");
+        document.querySelector(".emojis").style.display = "none";
+      });
+    });
+    document.getElementById("close-survey").addEventListener("click", () => {
+      hideSatisfactionSurvey();
+    });
+  </script>
+</body>
+</html>
